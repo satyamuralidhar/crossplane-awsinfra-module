@@ -1,0 +1,283 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: appserver
+  labels: 
+    providers: aws
+    crossplane.io/xrd: appservers.aws.satya.io
+spec:
+  compositeTypeRef:
+    apiVersion: aws.satya.io/v1
+    kind: Appserver
+  writeConnectionSecretsToNamespace: crossplane-system
+  patchSets:
+  - name: metadata
+    patches:
+      - fromFieldPath: metadata.labels
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        metadata:
+          name: "crossplane-vpc"
+          namespace: crossplane-system
+          labels:
+            name: cptest-vpc
+            crossplane.io/xrd: appservers.aws.satya.io
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            cidrBlock: ""
+            instanceTenancy: default
+            tags:
+            - key: Name
+              value: cp-vpc
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps
+
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      
+      - fromFieldPath: spec.parameters.vpc_cidr
+        toFieldPath: spec.forProvider.cidrBlock
+    
+
+    - name: sub1
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: cp-subnet1
+          namespace: crossplane-system
+          labels:
+            app: cptest-sub1
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            availabilityZone: ""
+            vpcIdSelector:
+              matchLabels:
+                name: cptest-vpc
+            cidrBlock: ""
+            mapPublicIPOnLaunch: true
+            tags:
+            - key: Name
+              value: subnet1
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps
+      patches: 
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - fromFieldPath: spec.parameters.subnet1_cidr
+        toFieldPath: spec.forProvider.cidrBlock
+      - fromFieldPath: spec.parameters.subnet1_availbility_zone
+        toFieldPath: spec.forProvider.availabilityZone
+    - name: sub2
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        metadata:
+          name: cp-subnet2
+          namespace: crossplane-system
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            availabilityZone: ""
+            vpcIdSelector:
+              matchLabels:
+                name: cptest-vpc
+            cidrBlock: ""
+            mapPublicIPOnLaunch: false
+            tags:
+            - key: Name
+              value: subnet2
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps    
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - fromFieldPath: spec.parameters.subnet2_cidr
+        toFieldPath: spec.forProvider.cidrBlock
+      - fromFieldPath: spec.parameters.subnet2_availbility_zone
+        toFieldPath: spec.forProvider.availabilityZone
+    - name: igw
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: InternetGateway
+        metadata:
+          name: cp-igw
+          namespace: crossplane-system
+          labels: 
+            gw: gw
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            vpcIdSelector:
+              matchLabels:
+                name: cptest-vpc
+            tags:
+            - key: Name
+              value: cp-igw
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps
+            - key: Name
+              value: cp-igw
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+    - name: rt
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: RouteTable
+        metadata:
+          name: cp-routetable
+          namespace: crossplane-system
+          labels: 
+            rt: rt
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            routes:
+            - destinationCidrBlock: 0.0.0.0/0
+              gatewayIdSelector: 
+                matchLabels: 
+                  gw: gw
+            associations:
+              - subnetIdSelector:
+                  matchLabels:
+                    app: cptest-sub1
+            vpcIdSelector:
+              matchLabels:
+                name: cptest-vpc
+            tags:
+            - key: Name
+              value: cp-rt        
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+
+    - name: route
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: Route
+        metadata:
+          name: route
+          namespace: crossplane-system
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            destinationCIDRBlock: 0.0.0.0/0
+            routeTableIdSelector:
+              matchLabels:
+                rt: rt
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region  
+    - name: nsg
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: SecurityGroup
+        metadata:
+          name: cp-sg
+          namespace: crossplane-system
+          labels:
+            sg: sg
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            groupName: cp-custom-sg
+            description: ec2-nsg rules
+            vpcIdSelector:
+              matchLabels:
+                name: cptest-vpc
+            ingress:
+              - fromPort: 22
+                toPort: 22
+                ipProtocol: tcp
+                ipRanges:
+                  - cidrIp: 0.0.0.0/0
+              - fromPort: 80
+                toPort: 80
+                ipProtocol: tcp
+                ipRanges:
+                  - cidrIp: 0.0.0.0/0
+            egress:
+              - ipProtocol: '-1'
+                ipRanges:
+                  - cidrIp: 0.0.0.0/0
+            tags:
+            - key: Name
+              value: cp-nsg
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps
+      patches:
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+    
+    - name: ec2
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: Instance
+        metadata:
+          name: cp-instance
+          namespace: crossplane-system
+        spec:
+          providerConfigRef: 
+            name: awsconfig
+          forProvider:
+            region: ""
+            imageId: ""
+            instanceType: ""
+            keyName: ""
+            blockDeviceMappings:
+            - deviceName: /dev/sdx
+              ebs:
+                volumeSize: 30
+            subnetIdSelector: 
+              matchLabels:
+                app: cptest-sub1
+            securityGroupSelector:
+              matchLabels:
+                sg: sg
+            tags:
+            - key: Name
+              value: cp-vm
+            - key: environment
+              value: dev
+            - key: app
+              value: GitOps
+      patches:
+      - fromFieldPath: spec.parameters.vm_size
+        toFieldPath: spec.forProvider.instanceType
+      - fromFieldPath: spec.parameters.region
+        toFieldPath: spec.forProvider.region
+      - fromFieldPath: spec.parameters.vm_ami_id
+        toFieldPath: spec.forProvider.imageId
+      - fromFieldPath: spec.parameters.keyname
+        toFieldPath: spec.forProvider.keyName

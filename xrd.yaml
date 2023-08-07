@@ -1,0 +1,129 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: appservers.aws.satya.io
+  labels: 
+    provider: aws
+spec:
+  defaultCompositeDeletePolicy: Foreground
+  group: aws.satya.io
+  defaultCompositionRef:
+    name: appserver
+  names:
+    kind: Appserver
+    plural: appservers
+    singular: appserver
+    shortNames:
+    - app
+  claimNames: 
+    kind: ClusterClaim
+    plural: clusterclaims
+  versions:
+  - name: v1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  region:
+                    type: string
+                    description: Define region Name
+
+                  # tags:
+                  #   type: object
+                  #   description: define tags
+                  
+                  # vpc_name: 
+                  #   type: string
+                  #   description: virtual network name
+                  
+                  vpc_cidr: 
+                    type: string
+                    description: virtual network cidr ranges
+                  
+                  # subnet1_name: 
+                  #   type: string
+                  #   description: subnet1 name
+                  
+                  subnet1_cidr: 
+                    type: string
+                    description: subnet1 cidr ranges
+                  
+                  subnet1_availbility_zone:
+                    type: string
+                    description: define subnet1 avalibility 
+                                    
+                  subnet2_cidr: 
+                    type: string 
+                    description: subnet2 cidr ranges
+                  
+                  subnet2_availbility_zone:
+                    type: string
+                    description: define subnet2 avalibility
+                  
+                  # subnet2_name: 
+                  #   type: string
+                  #   description: subnet2 name
+ 
+                  
+                  vm_size: 
+                    type: string
+                    description: Define VM Size
+                  
+                  # vm_name: 
+                  #   type: string
+                  #   description: Define Vm name
+                  
+                  vm_ami_id: 
+                    type: string
+                    description: Define ami id
+                  
+                  keyname: 
+                    type: string
+                    description: Define keyname
+
+                required:
+                  - region
+                  #- vpc_name
+                  - vpc_cidr
+                  #- subnet1_name 
+                  - subnet1_cidr
+                  - subnet1_availbility_zone
+                  #- subnet2_name
+                  - subnet2_cidr
+                  - subnet2_availbility_zone
+                  - vm_size 
+                  #- vm_name
+                  - vm_ami_id 
+                  - keyname
+                  #- tags
+              
+                # required: 
+                #   - parameters
+              
+            status:
+              type: object
+              description: A AttachedClusterStatus represents the observed state
+              properties:
+                vpcId:
+                  type: string
+                region:
+                  type: string
+                sgId: 
+                  type: string
+                
+        additionalPrinterColumns:
+        - name: region
+          type: string
+          jsonPath: ".status.region"
+        - name: vpcId
+          type: string
+          jsonPath: ".status.vpcId"
+        

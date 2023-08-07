@@ -1,0 +1,33 @@
+apiVersion: aws.satya.io/v1
+kind: Appserver
+metadata:
+  name: demo
+  namespace: crossplane-system
+spec:
+  # providerConfigRef: 
+  #   name: awsconfig
+  compositionRef:
+    name: appserver
+  parameters:
+    region: "ap-south-1"
+    vm_size: t2.micro
+    vpc_cidr: 10.0.0.0/16
+    subnet1_cidr: 10.0.1.0/24
+    subnet1_availbility_zone: ap-south-1a 
+    subnet2_cidr: 10.0.2.0/24
+    subnet2_availbility_zone: ap-south-1b
+    vm_ami_id: ami-0ded8326293d3201b
+    keyname: trivy
+
+    # vpc_name: "myvpc"
+    # vm_name: mycpvm
+    # subnet2_name: demo-subnet2
+    # subnet1_name: demo-subnet1
+
+
+    # tags: 
+    # - key: app
+    #   value: crossplane 
+  # writeConnectionSecretToRef:
+  #   namespace: crossplane-system
+  #   name: awsconfig
